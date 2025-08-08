@@ -96,6 +96,7 @@ Blockly.Blocks['controls_forRange'] = {
 delete Blockly.Blocks['controls_for'];
 Blockly.Blocks['controls_for'] = Blockly.Blocks['controls_forRange'];
 
+// Some change
 Blockly.Blocks['controls_forEach'] = {
   // For each loop.
   category: 'Control',

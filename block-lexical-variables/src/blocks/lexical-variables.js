@@ -94,6 +94,7 @@ import '../msg.js';
 import {ErrorCheckers} from '../warningHandler.js';
 import {FieldParameterFlydown} from '../fields/field_parameter_flydown.js';
 import {FieldFlydown} from '../fields/field_flydown.js';
+//import {FieldTypeDropdown} from '../fields/field_type_dropdown'
 import {FieldGlobalFlydown} from '../fields/field_global_flydown.js';
 import {
   FieldLexicalVariable,
@@ -120,7 +121,7 @@ Blockly.Blocks['global_declaration'] = {
       Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_NAME,
       FieldFlydown.DISPLAY_BELOW)
     const valueField = this.appendValueInput('VALUE')
-        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TITLE_INIT);
+      .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TITLE_INIT);
     if (dataTypesEnabled()) {
       valueField.appendField(new Blockly.FieldDropdown(Blockly.types_.dataTypes), 'TYPE');
     }
@@ -150,6 +151,59 @@ Blockly.Blocks['global_declaration'] = {
   },
   getVariableType: function() {
     return this.getFieldValue('TYPE');
+  },
+  renameVar: function(oldName, newName) {
+    if (Blockly.Names.equals(oldName, this.getFieldValue('NAME'))) {
+      this.setFieldValue(newName, 'NAME');
+    }
+  },
+};
+
+Blockly.Blocks['global_declaration_array'] = {
+  // Global var defn
+  category: 'Variables',
+  helpUrl: Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_HELPURL,
+  init: function() {
+    this.setStyle('variable_blocks');
+    this.fieldGlobalFlydown_ = new FieldGlobalFlydown(
+      Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_NAME,
+      FieldFlydown.DISPLAY_BELOW)
+    const valueField = this.appendValueInput('VALUE')
+        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TITLE_INIT);
+    if (dataTypesEnabled()) {
+      valueField.appendField(new Blockly.FieldDropdown([
+        ['1', '1'],
+        ['2', '2'],
+        ['3', '3'],
+      ]), 'DIMENSION')
+      valueField.appendField(new Blockly.FieldDropdown(Blockly.types_.dataTypes), 'TYPE');
+    }
+    valueField.appendField(this.fieldGlobalFlydown_, 'NAME')
+      .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TO);
+    this.setTooltip(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TOOLTIP);
+
+    if (dataTypesEnabled()) {
+      this.setOnChange(function (e) {
+        if (!this.workspace || this.workspace.isFlyout || this.isInFlyout) return;
+
+        const type = this.getVariableType();
+        this.getInput('VALUE').setCheck(type ? [type] : null);
+
+        if (e.type === 'change' && e.name === 'TYPE') {
+          LexicalVariable.changeGlobalVariableType(this.getFieldValue('NAME'), type, type)
+        }
+      })
+    }
+  },
+  getDeclaredVars: function() {
+    const field = this.getField('NAME');
+    return field ? [field.getText()] : [];
+  },
+  getGlobalNames: function() {
+    return this.getDeclaredVars();
+  },
+  getVariableType: function() {
+    return this.getFieldValue('TYPE')+'[]'.repeat(parseInt(this.getFieldValue('DIMENSION')));
   },
   renameVar: function(oldName, newName) {
     if (Blockly.Names.equals(oldName, this.getFieldValue('NAME'))) {
@@ -309,6 +363,12 @@ Blockly.Blocks['local_declaration_statement'] = {
     }
     return container;
   },
+  saveExtraState: function() {
+    const state = {}
+    state.names = this.localNames_
+    if (dataTypesEnabled()) state.types = this.localTypes_
+    return state
+  },
   // Retrieve local names from mutation element of XML for block
   domToMutation: function(xmlElement) {
     // and replace existing declarations
@@ -327,6 +387,11 @@ Blockly.Blocks['local_declaration_statement'] = {
     }
     this.updateDeclarationInputs_(this.localNames_, this.localTypes_); // add declarations; inits
     // are undefined
+  },
+  loadExtraState: function (state) {
+    this.localNames_ = state.names
+    this.localTypes_ = state.types
+    this.updateDeclarationInputs_(this.localNames_, this.localTypes_);
   },
   updateDeclarationInputs_: function(names, types, inits) {
     // Modify this block to replace existing initializers by new declaration
@@ -397,8 +462,7 @@ Blockly.Blocks['local_declaration_statement'] = {
 
     this.rendered = savedRendered;
     if (this.rendered) {
-      this.initSvg();
-      this.render();
+      void this.queueRender()
     }
   },
   // [lyn, 10/27/13] Introduced this to correctly handle renaming of mutatorarg
@@ -718,7 +782,9 @@ Blockly.Blocks['local_declaration_expression'] = {
     Blockly.Blocks.local_declaration_statement.withLexicalVarsAndPrefix,
   onchange: Blockly.Blocks.local_declaration_statement.onchange,
   mutationToDom: Blockly.Blocks.local_declaration_statement.mutationToDom,
+  saveExtraState: Blockly.Blocks.local_declaration_statement.saveExtraState,
   domToMutation: Blockly.Blocks.local_declaration_statement.domToMutation,
+  loadExtraState: Blockly.Blocks.local_declaration_statement.loadExtraState,
   updateDeclarationInputs_:
     Blockly.Blocks.local_declaration_statement.updateDeclarationInputs_,
   parameterFlydown: Blockly.Blocks.local_declaration_statement.parameterFlydown,

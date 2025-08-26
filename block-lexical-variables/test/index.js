@@ -1,11 +1,8 @@
+// -*- mode: javascript; c-basic-offset: 2; -*-
 /**
  * @license
  * Copyright 2021 Google LLC
  * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
- * @fileoverview Block test.
  */
 
 import * as Blockly from 'blockly/core';
@@ -14,31 +11,66 @@ import {createPlayground} from '@blockly/dev-tools';
 import {LexicalVariablesPlugin} from '../src/index.js';
 import '../src/blocks.js';
 
-// TODO: Edit list of blocks.
-const allBlocks = [
+// Blocks shown in the "Misc. Blocks" category.
+const miscBlocks = [
   'global_declaration',
   'controls_for',
   'controls_forRange',
   'controls_forEach',
-  // 'controls_flow_statements',
   'local_declaration_statement',
   'simple_local_declaration_statement',
   'local_declaration_expression',
   'controls_do_then_return',
-  // 'procedures_defnoreturn',
-  // 'procedures_callnoreturn',
-  // 'procedures_defreturn',
-  // 'procedures_callreturn',
 ];
+
+// Shared list for Variables category.
+const variableBlocks = [
+  'global_declaration',
+  'global_declaration_array',
+  'simple_local_declaration_statement',
+  'local_declaration_statement',
+  'local_declaration_expression',
+  'lexical_variable_get',
+  'lexical_variable_set',
+];
+
+// JSON toolbox definition (V12 style).
+const toolbox = {
+  kind: 'categoryToolbox',
+  contents: [
+    {
+      kind: 'category',
+      name: 'Misc. Blocks',
+      colour: '370',
+      contents: miscBlocks.map(type => ({kind: 'block', type})),
+    },
+    {kind: 'sep'},
+    {
+      kind: 'category',
+      id: 'catVariables',
+      name: 'Variables',
+      colour: '330',
+      contents: variableBlocks.map(type => ({kind: 'block', type})),
+    },
+    {
+      kind: 'category',
+      id: 'catFunctions',
+      name: 'Functions',
+      colour: '290',
+      custom: 'CUSTOM_PROCEDURE',
+    },
+  ],
+};
 
 /**
  * Create a workspace.
- * @param {HTMLElement} blocklyDiv The blockly container div.
- * @param {!Blockly.BlocklyOptions} options The Blockly options.
- * @return {!Blockly.WorkspaceSvg} The created workspace.
+ * @param {HTMLElement} blocklyDiv
+ * @param {!Blockly.BlocklyOptions} options
+ * @return {!Blockly.WorkspaceSvg}
  */
 function createWorkspace(blocklyDiv, options) {
   const workspace = Blockly.inject(blocklyDiv, options);
+
   LexicalVariablesPlugin.init(workspace, {
     types: {
       enableDataTypes: true,
@@ -47,48 +79,37 @@ function createWorkspace(blocklyDiv, options) {
         ['float', 'float'],
         ['boolean', 'boolean'],
         ['char*', 'String'],
+        ['Array<int>', 'Array<int>'],
+        ['Array<float>', 'Array<float>'],
+        ['Array<boolean>', 'Array<boolean>'],
+        ['Array<char*>', 'Array<String>'],
+        ['Map<String, int>', 'Map<String, int>'],
       ],
       loopType: 'int',
       defaultType: 'int',
-    }
+    },
   });
 
-workspace.registerToolboxCategoryCallback(
+  workspace.registerToolboxCategoryCallback(
     'CUSTOM_PROCEDURE',
-    function(workspace) {
-        const xmlList = Blockly.Procedures.flyoutCategory(workspace);
-        const earlyReturn = document.createElement('block');
-        earlyReturn.setAttribute('type', 'procedures_early_return');
-        xmlList.push(earlyReturn);
-        return xmlList;
+    function(ws) {
+      const xmlList = Blockly.Procedures.flyoutCategory(ws);
+      const earlyReturn = document.createElement('block');
+      earlyReturn.setAttribute('type', 'procedures_early_return');
+      xmlList.push(earlyReturn);
+      return xmlList;
     }
-);
+  );
 
   return workspace;
 }
 
 Blockly.setLocale(En);
+
 document.addEventListener('DOMContentLoaded', function() {
   const defaultOptions = {
-    toolbox: `<xml xmlns="https://developers.google.com/blockly/xml">
-      <category  colour="370" name="Misc. Blocks">
-        ${allBlocks.map((b) => `<block type="${b}"></block>`)}
-      </category>
-      <sep></sep>
-      <category id="catVariables" colour="330" name="Variables">
-        <block type="global_declaration"></block>
-        <block type="simple_local_declaration_statement"></block>
-        <block type="local_declaration_statement"></block>
-        <block type="local_declaration_expression"></block>
-        <block type="lexical_variable_get"></block>
-        <block type="lexical_variable_set"></block>
-      </category>
-      <category
-        id="catFunctions" colour="290" custom="CUSTOM_PROCEDURE" name="Functions"
-      ></category>
-    </xml>`,
+    toolbox, // JSON toolbox object
     collapse: true,
   };
-  createPlayground(document.getElementById('root'), createWorkspace,
-      defaultOptions);
+  createPlayground(document.getElementById('root'), createWorkspace, defaultOptions);
 });

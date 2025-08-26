@@ -256,7 +256,11 @@ Blockly.Blocks['procedures_defnoreturn'] = {
     // horizontal -> vertical params in procedure decl doesn't handle body tag
     // appropriately!
     for (let i = 0; i < this.inputList.length; i++) {
-      this.inputList[i].init();
+      if (this.inputList[i].sourceBlock.rendered) {
+        this.inputList[i].init();
+      } else {
+        this.inputList[i].initModel();
+      }
     }
     if (this.rendered) {
       this.render();
@@ -386,6 +390,15 @@ Blockly.Blocks['procedures_defnoreturn'] = {
     }
     return container;
   },
+  saveExtraState: function() {
+    const state = {}
+    if (!this.horizontalParameters) {
+      state.verticalParameters = 'true'
+    }
+    state.arguments = this.arguments_
+    state.argumentTypes = this.argumentTypes_
+    return state
+  },
   domToMutation: function(xmlElement) {
     const names = [];
     const types = [];
@@ -401,6 +414,10 @@ Blockly.Blocks['procedures_defnoreturn'] = {
     this.horizontalParameters =
         xmlElement.getAttribute('vertical_parameters') !== 'true';
     this.updateParams_(names, types);
+  },
+  loadExtraState: function(state) {
+    this.horizontalParameters = state.verticalParameters !== 'true'
+    this.updateParams_(state.arguments, state.argumentTypes)
   },
   decompose: function(workspace) {
     const containerBlock = workspace.newBlock('procedures_mutatorcontainer');
@@ -628,7 +645,9 @@ Blockly.Blocks['procedures_defreturn'] = {
   setParameterOrientation:
       Blockly.Blocks.procedures_defnoreturn.setParameterOrientation,
   mutationToDom: Blockly.Blocks.procedures_defnoreturn.mutationToDom,
+  saveExtraState: Blockly.Blocks.procedures_defnoreturn.saveExtraState,
   domToMutation: Blockly.Blocks.procedures_defnoreturn.domToMutation,
+  loadExtraState: Blockly.Blocks.procedures_defnoreturn.loadExtraState,
   decompose: Blockly.Blocks.procedures_defnoreturn.decompose,
   compose: Blockly.Blocks.procedures_defnoreturn.compose,
   dispose: Blockly.Blocks.procedures_defnoreturn.dispose,
@@ -1038,6 +1057,28 @@ Blockly.Blocks['procedures_callnoreturn'] = {
     // [lyn, 10/27/13] Above. set tracking to true in case this is a block with
     // argument subblocks. and there's an open mutator.
   },
+  saveExtraState() {
+    const params = [];
+    for (let i = 0; this.getInput('ARG' + i); i++) {
+      const input = this.getInput('ARG' + i);
+      const field = input.fieldRow[0];
+      params.push(field.getText());
+    }
+    return {
+      name: this.getFieldValue('PROCNAME'),
+      params,
+    };
+  },
+  loadExtraState: function(state) {
+    const name = state['name']
+    this.setFieldValue(name, 'PROCNAME');
+    this.arguments_ = []
+    state.params.forEach(argument => {
+      this.arguments_.push(argument)
+    });
+
+    this.setProcedureParameters(this.arguments_, null, true);
+  },
   renameVar: function(oldName, newName) {
     for (let x = 0; x < this.arguments_.length; x++) {
       if (Blockly.Names.equals(oldName, this.arguments_[x])) {
@@ -1121,7 +1162,9 @@ Blockly.Blocks['procedures_callreturn'] = {
   setProcedureParameters:
   Blockly.Blocks.procedures_callnoreturn.setProcedureParameters,
   mutationToDom: Blockly.Blocks.procedures_callnoreturn.mutationToDom,
+  saveExtraState: Blockly.Blocks.procedures_callnoreturn.saveExtraState,
   domToMutation: Blockly.Blocks.procedures_callnoreturn.domToMutation,
+  loadExtraState: Blockly.Blocks.procedures_callnoreturn.loadExtraState,
   renameVar: Blockly.Blocks.procedures_callnoreturn.renameVar,
   procCustomContextMenu:
       Blockly.Blocks.procedures_callnoreturn.procCustomContextMenu,

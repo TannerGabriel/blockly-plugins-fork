@@ -52,6 +52,8 @@ if (pkg) {
     return 'var ' + genBasicSetterCode(block, 'NAME', generator);
   };
 
+  javascriptGenerator.forBlock.global_declaration_array = javascriptGenerator.forBlock.global_declaration
+
   function generateDeclarations(block, generator) {
     let code = '{\n  let ';
     for (let i = 0; block.getFieldValue('VAR' + i); i++) {

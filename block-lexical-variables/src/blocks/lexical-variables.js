@@ -400,15 +400,9 @@ Blockly.Blocks['local_declaration_statement'] = {
     // list. [lyn, 03/04/13] As of change to, Blockly 1636, there is no longer
     // a collapsed input at end.
 
-    // Remember last (= body) input
-    const bodyInput = this.inputList[this.inputList.length - 1]; // Body input
     // for local
     // declaration
     const numDecls = this.inputList.length - 1;
-
-    // [lyn, 07/03/14] stop rendering until block is recreated
-    const savedRendered = this.rendered;
-    this.rendered = false;
 
     // Modify this local-in-do block according to arrangement of name blocks in
     // mutator editor. Remove all the local declaration inputs ...
@@ -423,9 +417,6 @@ Blockly.Blocks['local_declaration_statement'] = {
         },
     );
 
-    // Empty the inputList and recreate it, building local initializers from
-    // mutator
-    this.inputList = [];
     this.localNames_ = names;
     if (types) {
         this.localTypes_ = types;
@@ -456,14 +447,7 @@ Blockly.Blocks['local_declaration_statement'] = {
         declInput.connection.connect(inits[i]);
       }
     }
-
-    // Now put back last (= body) input
-    this.inputList = this.inputList.concat(bodyInput);
-
-    this.rendered = savedRendered;
-    if (this.rendered) {
-      void this.queueRender()
-    }
+    this.moveInputBefore(this.bodyInputName);
   },
   // [lyn, 10/27/13] Introduced this to correctly handle renaming of mutatorarg
   // in open mutator when procedure parameter flydown name is edited.

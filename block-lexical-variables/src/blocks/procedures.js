@@ -177,13 +177,6 @@ Blockly.Blocks['procedures_defnoreturn'] = {
     // var firstInput = this.inputList[0];
     // [lyn, 10/24/13] need to reconstruct first input
 
-    // Body of procedure
-    const bodyInput = this.inputList[this.inputList.length - 1];
-
-    // stop rendering until block is recreated
-    const savedRendered = this.rendered;
-    this.rendered = false;
-
     // remove first input
     // console.log("updateParams_: remove input HEADER");
     const thisBlock = this; // Grab correct object for use in thunk below
@@ -219,9 +212,6 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       }
     }
 
-    // empty the inputList then recreate it
-    this.inputList = [];
-
     // console.log("updateParams_: create input HEADER");
     const headerInput = this.createHeader(procName);
     // const headerInput =
@@ -247,24 +237,9 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       }
     }
 
-    // put the last two arguments back
-    this.inputList = this.inputList.concat(bodyInput);
+    // Now put back last (= body) input
+    this.moveInputBefore(this.bodyInputName);
 
-    this.rendered = savedRendered;
-    // [lyn, 10/28/13] I thought this rerendering was unnecessary. But I was
-    // wrong! Without it, get bug noticed by Andrew in which toggling
-    // horizontal -> vertical params in procedure decl doesn't handle body tag
-    // appropriately!
-    for (let i = 0; i < this.inputList.length; i++) {
-      if (this.inputList[i].sourceBlock.rendered) {
-        this.inputList[i].init();
-      } else {
-        this.inputList[i].initModel();
-      }
-    }
-    if (this.rendered) {
-      this.render();
-    }
     // set in BlocklyPanel.java on successful load
     if (this.workspace.loadCompleted) {
       Blockly.Procedures.mutateCallers(this);
@@ -473,7 +448,7 @@ Blockly.Blocks['procedures_defnoreturn'] = {
   },
   dispose: function(...args) {
     const name = this.getFieldValue('NAME');
-    const editable = this.editable_;
+    const editable = this.isOwnEditable();
     const workspace = this.workspace;
 
     // This needs to happen first so that the Blockly events will be replayed
@@ -960,9 +935,6 @@ Blockly.Blocks['procedures_callnoreturn'] = {
       this.argumentTypes_ = argTypes;
     }
 
-    // Switch off rendering while the block is rebuilt.
-    const savedRendered = this.rendered;
-    this.rendered = false;
     // Update the quarkConnections_ with existing connections.
     for (x = 0; this.getInput('ARG' + x); x++) {
       input = this.getInput('ARG' + x);
@@ -1005,20 +977,6 @@ Blockly.Blocks['procedures_callnoreturn'] = {
           }
         }
       }
-    }
-    // Restore rendering and show the changes.
-    this.rendered = savedRendered;
-    if (!this.workspace.rendered) {
-      // workspace hasn't been rendered yet, so other connections may
-      // not yet exist.
-      return;
-    }
-    // Initialize the new inputs.
-    for (x = 0; x < this.arguments_.length; x++) {
-      this.getInput('ARG' + x).init();
-    }
-    if (this.rendered) {
-      this.render();
     }
   },
   mutationToDom: function() {

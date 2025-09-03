@@ -259,6 +259,11 @@ Blockly.Blocks['local_declaration_statement'] = {
     }
     return container;
   },
+  saveExtraState: function() {
+    const state = {}
+    state.names = this.localNames_
+    return state
+  },
   // Retrieve local names from mutation element of XML for block
   domToMutation: function(xmlElement) {
     // and replace existing declarations
@@ -275,6 +280,10 @@ Blockly.Blocks['local_declaration_statement'] = {
     this.updateDeclarationInputs_(this.localNames_); // add declarations; inits
     // are undefined
   },
+  loadExtraState: function (state) {
+    this.localNames_ = state.names
+    this.updateDeclarationInputs_(this.localNames_);
+  },
   updateDeclarationInputs_: function(names, inits) {
     // Modify this block to replace existing initializers by new declaration
     // inputs created from names and inits. If inits is undefined, treat all
@@ -282,15 +291,9 @@ Blockly.Blocks['local_declaration_statement'] = {
     // list. [lyn, 03/04/13] As of change to, Blockly 1636, there is no longer
     // a collapsed input at end.
 
-    // Remember last (= body) input
-    const bodyInput = this.inputList[this.inputList.length - 1]; // Body input
     // for local
     // declaration
     const numDecls = this.inputList.length - 1;
-
-    // [lyn, 07/03/14] stop rendering until block is recreated
-    const savedRendered = this.rendered;
-    this.rendered = false;
 
     // Modify this local-in-do block according to arrangement of name blocks in
     // mutator editor. Remove all the local declaration inputs ...
@@ -305,9 +308,7 @@ Blockly.Blocks['local_declaration_statement'] = {
         },
     );
 
-    // Empty the inputList and recreate it, building local initializers from
-    // mutator
-    this.inputList = [];
+    // Build local initializers from mutator
     this.localNames_ = names;
 
     for (let i = 0; i < names.length; i++) {
@@ -331,13 +332,7 @@ Blockly.Blocks['local_declaration_statement'] = {
     }
 
     // Now put back last (= body) input
-    this.inputList = this.inputList.concat(bodyInput);
-
-    this.rendered = savedRendered;
-    if (this.rendered) {
-      this.initSvg();
-      this.render();
-    }
+    this.moveInputBefore(this.bodyInputName);
   },
   // [lyn, 10/27/13] Introduced this to correctly handle renaming of mutatorarg
   // in open mutator when procedure parameter flydown name is edited.
@@ -421,17 +416,7 @@ Blockly.Blocks['local_declaration_statement'] = {
     // Reconstruct inputs only if local list has changed
     if (!LexicalVariable.stringListsEqual(this.localNames_,
         newLocalNames)) {
-      // Switch off rendering while the block is rebuilt.
-      // var savedRendered = this.rendered;
-      // this.rendered = false;
-
       this.updateDeclarationInputs_(newLocalNames, initializers);
-
-      // Restore rendering and show the changes.
-      // this.rendered = savedRendered;
-      // if (this.rendered) {
-      //  this.render();
-      // }
     }
   },
   saveConnections: function(containerBlock) {
@@ -640,7 +625,9 @@ Blockly.Blocks['local_declaration_expression'] = {
     Blockly.Blocks.local_declaration_statement.withLexicalVarsAndPrefix,
   onchange: Blockly.Blocks.local_declaration_statement.onchange,
   mutationToDom: Blockly.Blocks.local_declaration_statement.mutationToDom,
+  saveExtraState: Blockly.Blocks.local_declaration_statement.saveExtraState,
   domToMutation: Blockly.Blocks.local_declaration_statement.domToMutation,
+  loadExtraState: Blockly.Blocks.local_declaration_statement.loadExtraState,
   updateDeclarationInputs_:
     Blockly.Blocks.local_declaration_statement.updateDeclarationInputs_,
   parameterFlydown: Blockly.Blocks.local_declaration_statement.parameterFlydown,

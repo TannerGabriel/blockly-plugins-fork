@@ -143,6 +143,7 @@ FieldLexicalVariable.prototype.doClassValidation_ = function(
 FieldLexicalVariable.getGlobalNames = function(optExcludedBlock) {
   // TODO: Maybe switch to injectable warning/error handling
   const mainWorkspace = Blockly.common.getMainWorkspace();
+  if (!mainWorkspace) return []
   const rootWorkspace = mainWorkspace.getRootWorkspace() || mainWorkspace;
   if (Instrument.useLynCacheGlobalNames && rootWorkspace &&
       rootWorkspace.getWarningHandler &&

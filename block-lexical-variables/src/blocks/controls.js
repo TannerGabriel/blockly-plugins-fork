@@ -56,8 +56,7 @@ Blockly.Blocks['controls_forRange'] = {
     // [lyn, 11/30/12] Changed variable to be text input box that does renaming
     // right (i.e., avoids variable capture)
     this.appendValueInput('FROM')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(Blockly?.types_?.loopType)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_ITEM)
         .appendField(new FieldParameterFlydown(
             Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_VAR, true,
@@ -65,13 +64,11 @@ Blockly.Blocks['controls_forRange'] = {
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_START)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendValueInput('TO')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(Blockly?.types_?.loopType)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_END)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendValueInput('BY')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(Blockly?.types_?.loopType)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_STEP)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendStatementInput('DO')
@@ -112,8 +109,7 @@ Blockly.Blocks['controls_forEach'] = {
     // [lyn, 11/29/12] Changed variable to be text input box that does renaming
     // right (i.e., avoids variable capture)
     this.appendValueInput('LIST')
-        .setCheck(Utilities.yailTypeToBlocklyType('list',
-            Utilities.INPUT))
+        .setCheck('Array_*')
         .appendField(Blockly.Msg.LANG_CONTROLS_FOREACH_INPUT_ITEM)
         .appendField(new FieldParameterFlydown(
             Blockly.Msg.LANG_CONTROLS_FOREACH_INPUT_VAR,

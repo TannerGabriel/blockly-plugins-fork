@@ -1160,7 +1160,7 @@ Blockly.Blocks['procedures_early_return'] = {
             block = block.getSurroundParent();
         }
 
-        this.setEnabled(legal);
+        this.setDisabledReason(!legal, 'MUST_BE_IN_PROCEDURE');
 
         if (!legal) {
             this.setWarningText('Early return only allowed inside a function definition');

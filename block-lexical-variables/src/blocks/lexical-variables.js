@@ -636,16 +636,6 @@ Blockly.Blocks['local_declaration_statement'] = {
     return result;
   },
   getVariableTypes: function() {
-    // When the mutator is open, reflect the state inside it (live types).
-    if (this.mutator && this.mutator.getSize() && this.mutator.rootBlock) {
-      const types = [];
-      let arg = this.mutator.rootBlock.getInputTargetBlock('STACK');
-      while (arg) {
-          types.push(arg.getFieldValue('TYPE') || 'any');
-          arg = arg.nextConnection && arg.nextConnection.targetBlock();
-        }
-      return types;
-    }
    return this.localTypes_;
   },
 };
@@ -778,10 +768,8 @@ Blockly.Blocks['local_mutatorarg'] = {
       LexicalVariable.renameParam)
 
     const input = this.appendDummyInput()
-        .appendField('type');
-
     if (dataTypesEnabled()) {
-      input.appendField(new Blockly.FieldDropdown(Blockly.types_.dataTypes), 'TYPE')
+      input.appendField('type').appendField(new Blockly.FieldDropdown(Blockly.types_.dataTypes), 'TYPE')
     }
 
     input.appendField(Blockly.Msg.LANG_VARIABLES_LOCAL_MUTATOR_ARG_TITLE_NAME)
@@ -792,15 +780,6 @@ Blockly.Blocks['local_mutatorarg'] = {
     this.contextMenu = false;
     this.lexicalVarPrefix = Shared.localNamePrefix;
     this.mustNotRenameCapturables = true;
-
-    if (dataTypesEnabled()) {
-      this.setOnChange(function (e) {
-        const newType = this.getFieldValue('TYPE');
-        if (e.type === 'change' && e.name === 'TYPE') {
-          LexicalVariable.changeVariableType(this, this.getFieldValue('NAME'), newType, newType)
-        }
-      })
-    }
   },
   getContainerBlock: function() {
     let parent = this.getParent();
@@ -828,7 +807,7 @@ Blockly.Blocks['local_mutatorarg'] = {
   },
   // [lyn, 11/24/12] Check for situation in which mutator arg has been removed
   // from stack,
-  onchange: function() {
+  onchange: function(e) {
     const paramName = this.getFieldValue('NAME');
     if (paramName) { // paramName is null when delete from stack
       // console.log("Mutatorarg onchange: " + paramName);
@@ -858,6 +837,13 @@ Blockly.Blocks['local_mutatorarg'] = {
             this.setFieldValue(newName, 'NAME');
           }
         }
+      }
+    }
+
+    if (dataTypesEnabled()) {
+      const newType = this.getFieldValue('TYPE');
+      if (e.type === 'change' && e.name === 'TYPE') {
+        LexicalVariable.changeVariableType(this, this.getFieldValue('NAME'), newType, newType)
       }
     }
   },

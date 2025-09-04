@@ -11,7 +11,8 @@
     "predeploy": "blockly-scripts predeploy",
     "prepublishOnly": "npm run clean && npm run build-nolint",
     "start": "blockly-scripts start --skip-lint",
-    "test": "blockly-scripts test"
+    "test": "blockly-scripts test",
+    "prepare": "npm run predeploy"
   },
   "main": "./dist/index.js",
   "unpkg": "./dist/index.js",

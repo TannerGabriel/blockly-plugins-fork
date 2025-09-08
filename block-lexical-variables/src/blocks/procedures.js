@@ -1151,13 +1151,20 @@ Blockly.Blocks['procedures_early_return'] = {
 
         let block = this.getSurroundParent();
         let legal = false;
+        let inReturnProc = true;
+
         while (block) {
-            if (block.type === 'procedures_defreturn' ||
-                block.type === 'procedures_defnoreturn') {
-                legal = true;
-                break;
-            }
-            block = block.getSurroundParent();
+          if (block.type === 'procedures_defnoreturn') {
+            legal = true;
+            inReturnProc = false;
+            break;
+          }
+          if (block.type === 'procedures_defreturn') {
+            legal = true;
+            inReturnProc = true;
+            break;
+          }
+          block = block.getSurroundParent();
         }
 
         this.setDisabledReason(!legal, 'MUST_BE_IN_PROCEDURE');
@@ -1166,6 +1173,22 @@ Blockly.Blocks['procedures_early_return'] = {
             this.setWarningText('Early return only allowed inside a function definition');
         } else {
             this.setWarningText(null);
+        }
+
+        const input = this.getInput('RETURN_VALUE');
+        if (input) {
+          // Show only if inside a procedures_defreturn
+          input.setVisible(inReturnProc);
+
+          // If hiding, disconnect the input
+          if (!inReturnProc && input.connection && input.connection.isConnected()) {
+            const target = input.connection.targetBlock();
+            input.connection.disconnect();
+            if (target && target.isShadow && target.isShadow()) {
+              target.dispose(false);
+            }
+          }
+          this.render()
         }
     },
     getReturnType: function() {

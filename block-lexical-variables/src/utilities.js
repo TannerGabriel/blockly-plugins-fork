@@ -22,14 +22,14 @@ import './msg.js';
  * @return {boolean}
  */
 export const InstantInTime = function(myConn, otherConn) {
-  if (!myConn.sourceBlock_.rendered ||
-      !otherConn.sourceBlock_.rendered) {
-    if (otherConn.check_ && !otherConn.check_.includes('InstantInTime')) {
-      otherConn.sourceBlock_.badBlock();
+  if (!myConn.getSourceBlock().rendered ||
+      !otherConn.getSourceBlock().rendered) {
+    if (otherConn.getCheck() && !otherConn.getCheck().includes('InstantInTime')) {
+      otherConn.getSourceBlock().badBlock();
     }
     return true;
   }
-  return !otherConn.check_ || otherConn.check_.includes('InstantInTime');
+  return !otherConn.getCheck() || otherConn.getCheck().includes('InstantInTime');
 };
 
 

@@ -136,22 +136,6 @@ FieldLexicalVariable.prototype.doClassValidation_ = function(
   return /** @type {string} */ (opt_newValue);
 };
 
-/**
- * Get the block holding this drop-down variable chooser.
- * @return {string} Block holding this drop-down variable chooser.
- */
-FieldLexicalVariable.prototype.getBlock = function() {
-  return this.block_;
-};
-
-/**
- * Set the block holding this drop-down variable chooser.
- * @param {?Blockly.Block} block Block holding this drop-down variable chooser.
- */
-FieldLexicalVariable.prototype.setBlock = function(block) {
-  this.block_ = block;
-};
-
 // [lyn, 11/10/12] Returns the names of all global definitions as a list of
 // strings [lyn, 11/18/12] * Removed from prototype and stripped off "global"
 // prefix (add it elsewhere) * Add optional excluded block argument as in
@@ -159,6 +143,8 @@ FieldLexicalVariable.prototype.setBlock = function(block) {
 FieldLexicalVariable.getGlobalNames = function(optExcludedBlock) {
   // TODO: Maybe switch to injectable warning/error handling
   const mainWorkspace = Blockly.common.getMainWorkspace();
+  // Return when the workspace is not initialized yet (e.g. toolbox-search plugin)
+  if (!mainWorkspace) return []
   const rootWorkspace = mainWorkspace.getRootWorkspace() || mainWorkspace;
   if (Instrument.useLynCacheGlobalNames && rootWorkspace &&
       rootWorkspace.getWarningHandler &&
@@ -178,8 +164,8 @@ FieldLexicalVariable.getGlobalNames = function(optExcludedBlock) {
     for (let i = 0; i < blocks.length; i++) {
       const block = blocks[i];
       if ((block.getGlobalNames) &&
-          (block != optExcludedBlock)) {
-        globals.push(...block.getGlobalNames());
+          (block != optExcludedBlock) && block.isEnabled()) {
+        globals.push(...block.getGlobalNames(optExcludedBlock));
       }
     }
   }
@@ -205,7 +191,7 @@ FieldLexicalVariable.getGlobalNames = function(optExcludedBlock) {
 // Shared.showPrefixToUser is true, non-global names are prefixed with labels
 // specified in blocklyeditor.js
 FieldLexicalVariable.prototype.getNamesInScope = function() {
-  return FieldLexicalVariable.getNamesInScope(this.block_);
+  return FieldLexicalVariable.getNamesInScope(this.getSourceBlock());
 };
 
 /**
@@ -386,15 +372,15 @@ FieldLexicalVariable.prototype.doValueUpdate_ = function(newValue) {
  */
 FieldLexicalVariable.prototype.updateMutation = function() {
   const text = this.getText();
-  if (this.sourceBlock_ && this.sourceBlock_.getParent()) {
-    this.sourceBlock_.eventparam = undefined;
+  if (this.getSourceBlock() && this.getSourceBlock().getParent()) {
+    this.getSourceBlock().eventparam = undefined;
     if (text.indexOf(Blockly.Msg.LANG_VARIABLES_GLOBAL_PREFIX + ' ') === 0) {
-      this.sourceBlock_.eventparam = null;
+      this.getSourceBlock().eventparam = null;
       this.translatedName = undefined;
       this.varname = undefined;
       return;
     }
-    let i, parent = this.sourceBlock_.getParent();
+    let i, parent = this.getSourceBlock().getParent();
     while (parent) {
       const variables = parent.declaredVariables ? parent.declaredVariables() : [];
       for (i = 0; i < variables.length; i++) {
@@ -402,13 +388,13 @@ FieldLexicalVariable.prototype.updateMutation = function() {
           if (parent.type == 'component_event') {
             // Innermost scope is an event block, so eventparam can be set.
             const codeName = parent.getParameters()[i].name;
-            this.sourceBlock_.eventparam = codeName;
+            this.getSourceBlock().eventparam = codeName;
             this.translatedName = variables[i];
             this.varname = codeName;
             return;
           } else {
             // Innermost scope is not an event, so eventparam can be nulled.
-            this.sourceBlock_.eventparam = null;
+            this.getSourceBlock().eventparam = null;
             this.translatedName = undefined;
             this.varname = undefined;
             return;
@@ -436,12 +422,12 @@ FieldLexicalVariable.prototype.getOptions = function(opt_useCache,
   }
   const extraOption = opt_extraOption || [];
   if (this.isOptionListDynamic()) {
-    if (!this.generatedOptions_ || !opt_useCache) {
-      this.generatedOptions_ =
+    if (!this.generatedOptions || !opt_useCache) {
+      this.generatedOptions =
           this.menuGenerator_.call(this).concat(extraOption);
-      validateOptions(this.generatedOptions_);
+      validateOptions(this.generatedOptions);
     }
-    return this.generatedOptions_.concat(extraOption);
+    return this.generatedOptions.concat(extraOption);
   }
   return /** @type {!Array<!Array<string>>} */ (this.menuGenerator_);
 };
@@ -502,9 +488,9 @@ const validateOptions = function(options) {
 FieldLexicalVariable.dropdownChange = function(text) {
   if (text) {
     this.doValueUpdate_(text);
-    const topWorkspace = this.sourceBlock_.workspace.getTopWorkspace();
+    const topWorkspace = this.getSourceBlock().workspace.getTopWorkspace();
     if (topWorkspace.getWarningHandler) {
-      topWorkspace.getWarningHandler().checkErrors(this.sourceBlock_);
+      topWorkspace.getWarningHandler().checkErrors(this.getSourceBlock());
     }
   }
   // window.setTimeout(Blockly.Variables.refreshFlyoutCategory, 1);
@@ -624,13 +610,13 @@ LexicalVariable.renameGlobal = function(newName) {
   // [lyn, 10/27/13] now check legality of identifiers
   newName = LexicalVariable.makeLegalIdentifier(newName);
 
-  this.sourceBlock_.getField('NAME').doValueUpdate_(newName);
+  this.getSourceBlock().getField('NAME').doValueUpdate_(newName);
 
-  const globals = FieldLexicalVariable.getGlobalNames(this.sourceBlock_);
-  // this.sourceBlock excludes block being renamed from consideration
+  const globals = FieldLexicalVariable.getGlobalNames(this.getSourceBlock());
+  // this.getSourceBlock excludes block being renamed from consideration
   // Potentially rename declaration against other occurrences
   newName = FieldLexicalVariable.nameNotIn(newName, globals);
-  if (this.sourceBlock_.rendered) {
+  if (this.getSourceBlock().rendered) {
     // Rename getters and setters
     if (Blockly.common.getMainWorkspace()) {
       const blocks = Blockly.common.getMainWorkspace().getAllBlocks();
@@ -689,10 +675,10 @@ LexicalVariable.renameParam = function(newName) {
   // Default behavior consistent with previous behavior is to use "false" for
   // last argument -- I.e., will not rename inner declarations, but may rename
   // newName
-  return LexicalVariable.renameParamFromTo(this.sourceBlock_, oldName,
+  return LexicalVariable.renameParamFromTo(this.getSourceBlock(), oldName,
       newName, false);
   // Default should be false (as above), but can also play with true:
-  // return LexicalVariable.renameParamFromTo(this.sourceBlock_,
+  // return LexicalVariable.renameParamFromTo(this.getSourceBlock(),
   // oldName, newName, true);
 };
 

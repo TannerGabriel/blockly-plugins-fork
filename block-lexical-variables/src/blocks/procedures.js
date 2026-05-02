@@ -160,23 +160,12 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       hash['arg_' + this.arguments_[x].toLowerCase()] = true;
     }
     if (badArg) {
-      this.setWarningText(Blockly.Msg['LANG_PROCEDURES_DEF_DUPLICATE_WARNING']);
+      this.setWarningText(Blockly.Msg['LANG_PROCEDURES_DEF_DUPLICATE_WARNING'], 'procedures_defnoreturn');
     } else {
-      this.setWarningText(null);
+      this.setWarningText(null, 'procedures_defnoreturn');
     }
 
     const procName = this.getFieldValue('NAME');
-    // save the first two input lines and the last input line
-    // to be re added to the block later
-    // var firstInput = this.inputList[0];
-    // [lyn, 10/24/13] need to reconstruct first input
-
-    // Body of procedure
-    const bodyInput = this.inputList[this.inputList.length - 1];
-
-    // stop rendering until block is recreated
-    const savedRendered = this.rendered;
-    this.rendered = false;
 
     // remove first input
     // console.log("updateParams_: remove input HEADER");
@@ -213,9 +202,6 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       }
     }
 
-    // empty the inputList then recreate it
-    this.inputList = [];
-
     // console.log("updateParams_: create input HEADER");
     const headerInput = this.createHeader(procName);
     // const headerInput =
@@ -241,20 +227,9 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       }
     }
 
-    // put the last two arguments back
-    this.inputList = this.inputList.concat(bodyInput);
+    // Now put back last (= body) input
+    this.moveInputBefore(this.bodyInputName);
 
-    this.rendered = savedRendered;
-    // [lyn, 10/28/13] I thought this rerendering was unnecessary. But I was
-    // wrong! Without it, get bug noticed by Andrew in which toggling
-    // horizontal -> vertical params in procedure decl doesn't handle body tag
-    // appropriately!
-    for (let i = 0; i < this.inputList.length; i++) {
-      this.inputList[i].init();
-    }
-    if (this.rendered) {
-      this.render();
-    }
     // set in BlocklyPanel.java on successful load
     if (this.workspace.loadCompleted) {
       Blockly.Procedures.mutateCallers(this);
@@ -292,7 +267,7 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       // procedure arguments_ list rather than mutate that list, but I'd be
       // wrong! Turns out that *not* mutating list here causes trouble below in
       // the line
-      // Blockly.Field.prototype.setText.call(mutatorarg.getTitle_("NAME"),
+      // Blockly.Field.prototype.setValue.call(mutatorarg.getTitle_("NAME"),
       // newParamName);  The reason is that this fires a change event in
       // mutator workspace, which causes a call to the proc decl compose()
       // method, and when it detects a difference in the arguments it calls
@@ -316,10 +291,10 @@ Blockly.Blocks['procedures_defnoreturn'] = {
 
       // 2. If there's an open mutator, change the name in the corresponding
       // slot.
-      if (procDecl.mutator && procDecl.mutator.rootBlock_) {
+      if (procDecl.mutator && procDecl.mutator.rootBlock) {
         // Iterate through mutatorarg param blocks and change name of one at
         // paramIndex
-        const mutatorContainer = procDecl.mutator.rootBlock_;
+        const mutatorContainer = procDecl.mutator.rootBlock;
         let mutatorargIndex = 0;
         let mutatorarg = mutatorContainer.getInputTargetBlock('STACK');
         while (mutatorarg && mutatorargIndex < paramIndex) {
@@ -332,13 +307,13 @@ Blockly.Blocks['procedures_defnoreturn'] = {
           // will be invoked several times, and on one of those times, it will
           // find new param name in the procedures arguments_ instance variable
           // and will try to renumber it (e.g. "a" -> "a2"). To avoid this,
-          // invoke the setText method of its Field s superclass directly.
+          // invoke the setValue method of its Field superclass directly.
           // I.e., can't do this:
           // mutatorarg.getTitle_("NAME").setValue(newParamName); so instead do
           // this:
           mutatorarg.getField('NAME').setValue(newParamName);
           // mutatorarg.getField("NAME").doValueUpdate_(newParamName);
-          //   Blockly.Field.prototype.setText.call(mutatorarg.getField("NAME"),
+          //   Blockly.Field.prototype.setValue.call(mutatorarg.getField("NAME"),
           // newParamName);
         }
       }
@@ -440,7 +415,7 @@ Blockly.Blocks['procedures_defnoreturn'] = {
   },
   dispose: function(...args) {
     const name = this.getFieldValue('NAME');
-    const editable = this.editable_;
+    const editable = this.isOwnEditable();
     const workspace = this.workspace;
 
     // This needs to happen first so that the Blockly events will be replayed
@@ -495,7 +470,7 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       this.updateParams_(newParams);
       // Update the mutator's variables if the mutator is open.
       if (this.mutator.isVisible()) {
-        const blocks = this.mutator.workspace_.getAllBlocks();
+        const blocks = this.mutator.getWorkspace().getAllBlocks();
         for (let x = 0, block; block = blocks[x]; x++) {
           if (block.type == 'procedures_mutatorarg') {
             const oldName = block.getFieldValue('NAME');
@@ -668,13 +643,13 @@ Blockly.Blocks['procedures_mutatorarg'] = {
         LexicalVariable.renameParam);
     // 2017 Blockly's text input change breaks our renaming behavior.
     // The following is a version we've defined.
-    editor.onHtmlInputChange_ = function(e) {
+    editor.onHtmlInputChange = function(e) {
       const oldValue = this.getValue();
-      FieldFlydown.prototype.onHtmlInputChange_.call(this, e);
+      FieldFlydown.prototype.onHtmlInputChange.call(this, e);
       const newValue = this.getValue();
       if (newValue && oldValue !== newValue && Blockly.Events.isEnabled()) {
         Blockly.Events.fire(
-            new Blockly.Events.BlockChange(this.sourceBlock_, 'field', this.name,
+            new Blockly.Events.BlockChange(this.getSourceBlock(), 'field', this.name,
                 oldValue, newValue));
       }
     };
@@ -889,9 +864,6 @@ Blockly.Blocks['procedures_callnoreturn'] = {
         this.quarkArguments_ = [];
       }
     }
-    // Switch off rendering while the block is rebuilt.
-    const savedRendered = this.rendered;
-    this.rendered = false;
     // Update the quarkConnections_ with existing connections.
     for (x = 0; this.getInput('ARG' + x); x++) {
       input = this.getInput('ARG' + x);
@@ -915,7 +887,7 @@ Blockly.Blocks['procedures_callnoreturn'] = {
         if (quarkName in this.quarkConnections_) {
           connection = this.quarkConnections_[quarkName];
           if (!connection || connection.targetConnection ||
-              connection.sourceBlock_.workspace != this.workspace) {
+              connection.getSourceBlock().workspace != this.workspace) {
             // Block no longer exists or has been attached elsewhere.
             delete this.quarkConnections_[quarkName];
           } else {
@@ -928,20 +900,6 @@ Blockly.Blocks['procedures_callnoreturn'] = {
           }
         }
       }
-    }
-    // Restore rendering and show the changes.
-    this.rendered = savedRendered;
-    if (!this.workspace.rendered) {
-      // workspace hasn't been rendered yet, so other connections may
-      // not yet exist.
-      return;
-    }
-    // Initialize the new inputs.
-    for (x = 0; x < this.arguments_.length; x++) {
-      this.getInput('ARG' + x).init();
-    }
-    if (this.rendered) {
-      this.render();
     }
   },
   mutationToDom: function() {
@@ -981,7 +939,7 @@ Blockly.Blocks['procedures_callnoreturn'] = {
       }
     }
   },
-  procCustomContextMenu: function(options) {
+  customContextMenu: function(options) {
     // Add option to find caller.
     const option = {enabled: true};
     option.text = Blockly.Msg['LANG_PROCEDURES_HIGHLIGHT_DEF'];
@@ -990,7 +948,7 @@ Blockly.Blocks['procedures_callnoreturn'] = {
     option.callback = function() {
       const def = Blockly.Procedures.getDefinition(name, workspace);
       if (def) {
-        def.select();
+        Blockly.common.setSelected(def);
         workspace.centerOnBlock(def.id);
         workspace.getParentSvg().parentElement.focus();
       }
@@ -1055,8 +1013,8 @@ Blockly.Blocks['procedures_callreturn'] = {
   mutationToDom: Blockly.Blocks.procedures_callnoreturn.mutationToDom,
   domToMutation: Blockly.Blocks.procedures_callnoreturn.domToMutation,
   renameVar: Blockly.Blocks.procedures_callnoreturn.renameVar,
-  procCustomContextMenu:
-      Blockly.Blocks.procedures_callnoreturn.procCustomContextMenu,
+  customContextMenu:
+      Blockly.Blocks.procedures_callnoreturn.customContextMenu,
   removeProcedureValue:
       Blockly.Blocks.procedures_callnoreturn.removeProcedureValue,
 };

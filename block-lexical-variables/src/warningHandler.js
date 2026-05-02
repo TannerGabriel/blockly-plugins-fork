@@ -74,19 +74,17 @@ export default class WarningHandler {
     }
 
     // remove the warning icon, if there is one
-    if (block.warning) {
-      block.setWarningText(null);
-    }
+    block.setWarningText(null, 'warningHandler');
     if (block.hasWarning) {
       block.hasWarning = false;
     }
   };
   setError(block, message) {
-    block.setWarningText(message);
+    block.setWarningText(message, 'warningHandler');
   }
 
   setWarning(block, message) {
-    block.setWarningText(message);
+    block.setWarningText(message, 'warningHandler');
   }
 }
 
@@ -117,9 +115,15 @@ export class ErrorCheckers {
     if (block.workspace.isDragging && block.workspace.isDragging()) {
       return false; // wait until the user is done dragging to check validity.
     }
+
+    // Don't disable blocks that are being dragged from toolbox or aren't fully rendered
+    if (block.isInFlyout || !block.workspace || block.workspace.isFlyout || !block.rendered) {
+      return false;
+    }
+
     for (let i=0; i<params.dropDowns.length; i++) {
       const dropDown = block.getField(params.dropDowns[i]);
-      const dropDownList = dropDown.menuGenerator_();
+      const dropDownList = dropDown.getOptions(false);
       const text = dropDown.getText();
       const value = dropDown.getValue();
       let textInDropDown = false;
@@ -140,8 +144,17 @@ export class ErrorCheckers {
       if (!textInDropDown) {
         const errorMessage = Blockly.Msg.ERROR_SELECT_VALID_ITEM_FROM_DROPDOWN;
         block.workspace.getWarningHandler().setError(block, errorMessage);
+        // Disable the block when dropdown has invalid value
+        if (block.workspace.disableInvalidBlocks) {
+          block.setDisabledReason(true, Blockly.Msg.ERROR_SELECT_VALID_ITEM_FROM_DROPDOWN);
+        }
+
         return true;
       }
+    }
+    // Re-enable the block if all dropdowns are valid
+    if (!block.isEnabled() && block.workspace.disableInvalidBlocks) {
+      block.setDisabledReason(false, Blockly.Msg.ERROR_SELECT_VALID_ITEM_FROM_DROPDOWN);
     }
     return false;
   };

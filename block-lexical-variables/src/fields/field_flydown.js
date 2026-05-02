@@ -123,7 +123,7 @@ FieldFlydown.prototype.flyoutCSSClassName =
 
 FieldFlydown.prototype.onMouseOver_ = function(e) {
   // [lyn, 10/22/13] No flydowns in a flyout!
-  if (!this.sourceBlock_.isInFlyout && FieldFlydown.showPid_ == 0) {
+  if (!this.getSourceBlock().isInFlyout && FieldFlydown.showPid_ == 0) {
     FieldFlydown.showPid_ =
         window.setTimeout(this.showFlydownMaker_(),
             FieldFlydown.timeout);
@@ -250,13 +250,13 @@ function callAllValidators(field, text) {
 // Override Blockly's behavior; they call the validator after setting the text,
 // which is incompatible with how our validators work (we expect to be called
 // before the change since in order to find the old references to be renamed).
-FieldFlydown.prototype.onHtmlInputChange_ = function(e) {
+FieldFlydown.prototype.onHtmlInputChange = function(e) {
   const htmlInput = this.htmlInput_;
   const text = htmlInput.value;
   if (text !== htmlInput.oldValue_) {
     htmlInput.oldValue_ = text;
     let valid = true;
-    if (this.sourceBlock_) {
+    if (this.getSourceBlock()) {
       valid = callAllValidators(this, htmlInput.value);
     }
     if (valid === null) {
@@ -268,7 +268,7 @@ FieldFlydown.prototype.onHtmlInputChange_ = function(e) {
   } else if (Blockly.utils.userAgent.WEBKIT) {
     // Cursor key.  Render the source block to show the caret moving.
     // Chrome only (version 26, OS X).
-    this.sourceBlock_.render();
+    this.getSourceBlock().render();
   }
 
   // We need all of the following to cause the field to resize!
@@ -276,7 +276,7 @@ FieldFlydown.prototype.onHtmlInputChange_ = function(e) {
   this.forceRerender();
   this.resizeEditor_();
 
-  Blockly.svgResize(this.sourceBlock_.workspace);
+  Blockly.svgResize(this.getSourceBlock().workspace);
 };
 
 /**

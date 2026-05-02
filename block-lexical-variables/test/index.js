@@ -39,7 +39,7 @@ const allBlocks = [
  */
 function createWorkspace(blocklyDiv, options) {
   const workspace = Blockly.inject(blocklyDiv, options);
-  LexicalVariablesPlugin.init(workspace);
+  LexicalVariablesPlugin.init(workspace, {disableInvalidBlocks: true});
   return workspace;
 }
 
@@ -52,6 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
       </category>
       <sep></sep>
       <category id="catVariables" colour="330" name="Variables">
+        <block type="initialize_global"></block>
+        <block type="global_declaration_entry"></block>
         <block type="global_declaration"></block>
         <block type="simple_local_declaration_statement"></block>
         <block type="local_declaration_statement"></block>

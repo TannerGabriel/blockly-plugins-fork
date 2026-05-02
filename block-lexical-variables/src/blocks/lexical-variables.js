@@ -137,8 +137,120 @@ Blockly.Blocks['global_declaration'] = {
   },
 };
 
+Blockly.Blocks['global_declaration_entry'] = {
+  category: 'Variables',
+  helpUrl: Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_HELPURL,
+  init: function() {
+    this.setStyle('variable_blocks');
+    this.appendValueInput('VALUE')
+        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TITLE_INIT)
+        .appendField(new FieldGlobalFlydown(
+            Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_NAME,
+            FieldFlydown.DISPLAY_BELOW), 'NAME')
+        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TO);
+    this.setPreviousStatement(true, ['global_declaration_entry', 'initialize_global']);
+    this.setNextStatement(true, ['global_declaration_entry']);
+    this.setTooltip(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TOOLTIP);
+    this.setOnChange(this.checkPlacement_);
+  },
+  getDeclaredVars: Blockly.Blocks.global_declaration.getDeclaredVars,
+  getGlobalNames: Blockly.Blocks.global_declaration.getGlobalNames,
+  renameVar: Blockly.Blocks.global_declaration.renameVar,
+  checkPlacement_: function() {
+    if (this.isInFlyout) return;
+
+    const REASON = Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_WARNING;
+    const parent = this.getSurroundParent();
+
+    if (!parent || parent.type !== 'initialize_global') {
+      this.setWarningText(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_WARNING, 'global_declaration_entry');
+      if (this.workspace.disableInvalidBlocks) {
+        this.setDisabledReason(true, REASON);
+      }
+    } else {
+      this.setWarningText(null, 'global_declaration_entry');
+      if (this.workspace.disableInvalidBlocks) {
+        this.setDisabledReason(false, REASON);
+      }
+    }
+  }
+};
+
+Blockly.Blocks['initialize_global'] = {
+  category: 'Variables',
+  helpUrl: Blockly.Msg.LANG_VARIABLES_LOCAL_DECLARATION_HELPURL,
+  init: function () {
+    this.setStyle('variable_blocks');
+    this.appendDummyInput()
+        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TITLE_INIT)
+    this.appendStatementInput('DO')
+        .appendField(Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_TO_DO);
+    this.setTooltip(Blockly.Msg.LANG_VARIABLES_LOCAL_DECLARATION_TOOLTIP);
+    this.setOnChange(this.checkChildren_)
+    queueMicrotask(this.checkChildren_.bind(this));
+  },
+  getDeclaredVarFieldNames: function () {
+    return ['VAR'];
+  },
+  getScopedInputName: function () {
+    return 'DO';
+  },
+  getGlobalNames: function (block) {
+    const names = []
+    let childBlock = this.getInputTargetBlock('DO')
+    while (childBlock) {
+      if (childBlock.type === 'global_declaration_entry' && block !== childBlock) {
+        names.push(...childBlock.getGlobalNames())
+      }
+      childBlock = childBlock.getNextBlock()
+    }
+    return names
+  },
+  checkChildren_: function(event) {
+    if (this.isInFlyout) return;
+    if (event && event.type !== Blockly.Events.BLOCK_MOVE && event.type !== Blockly.Events.BLOCK_DRAG) return;
+
+    const REASON = Blockly.Msg.LANG_VARIABLES_GLOBAL_DECLARATION_BLOCK_CHECK;
+    const inStack = new Set();
+
+    // Validate child blocks are global_declaration_entry types and mark them
+    let childBlock = this.getInputTargetBlock('DO');
+    while (childBlock) {
+      inStack.add(childBlock.id);
+      if (childBlock.type !== 'global_declaration_entry') {
+        childBlock.setWarningText(REASON, 'initialize_global');
+        if (this.workspace.disableInvalidBlocks) {
+          childBlock.setDisabledReason(true, REASON);
+        }
+        childBlock.__disabledByInitGlobal = true;
+      } else {
+        childBlock.setWarningText(null, 'initialize_global');
+        if (this.workspace.disableInvalidBlocks) {
+          childBlock.setDisabledReason(false, REASON);
+        }
+        childBlock.__disabledByInitGlobal = false;
+      }
+      childBlock = childBlock.getNextBlock();
+    }
+
+    // If a block was moved OUT, clear our disable flag/state
+    if (event && event.blockId) {
+      let moved = this.workspace.getBlockById(event.blockId);
+      while (moved) {
+        if (moved && moved.__disabledByInitGlobal && !inStack.has(moved.id)) {
+          moved.setWarningText(null, 'initialize_global');
+          if (this.workspace.disableInvalidBlocks) {
+            moved.setDisabledReason(false, REASON);
+          }
+          moved.__disabledByInitGlobal = false;
+        }
+        moved = moved.getNextBlock();
+      }
+    }
+  }
+}
+
 Blockly.Blocks['simple_local_declaration_statement'] = {
-  // For each loop.
   category: 'Variables',
   helpUrl: Blockly.Msg.LANG_VARIABLES_LOCAL_DECLARATION_HELPURL,
   init: function () {
@@ -282,15 +394,9 @@ Blockly.Blocks['local_declaration_statement'] = {
     // list. [lyn, 03/04/13] As of change to, Blockly 1636, there is no longer
     // a collapsed input at end.
 
-    // Remember last (= body) input
-    const bodyInput = this.inputList[this.inputList.length - 1]; // Body input
     // for local
     // declaration
     const numDecls = this.inputList.length - 1;
-
-    // [lyn, 07/03/14] stop rendering until block is recreated
-    const savedRendered = this.rendered;
-    this.rendered = false;
 
     // Modify this local-in-do block according to arrangement of name blocks in
     // mutator editor. Remove all the local declaration inputs ...
@@ -305,9 +411,7 @@ Blockly.Blocks['local_declaration_statement'] = {
         },
     );
 
-    // Empty the inputList and recreate it, building local initializers from
-    // mutator
-    this.inputList = [];
+    // Build local initializers from mutator
     this.localNames_ = names;
 
     for (let i = 0; i < names.length; i++) {
@@ -331,13 +435,7 @@ Blockly.Blocks['local_declaration_statement'] = {
     }
 
     // Now put back last (= body) input
-    this.inputList = this.inputList.concat(bodyInput);
-
-    this.rendered = savedRendered;
-    if (this.rendered) {
-      this.initSvg();
-      this.render();
-    }
+    this.moveInputBefore(this.bodyInputName);
   },
   // [lyn, 10/27/13] Introduced this to correctly handle renaming of mutatorarg
   // in open mutator when procedure parameter flydown name is edited.
@@ -359,10 +457,10 @@ Blockly.Blocks['local_declaration_statement'] = {
       newLocals[paramIndex] = newParamName;
 
       // If there's an open mutator, change the name in the corresponding slot.
-      if (localDecl.mutator && localDecl.mutator.rootBlock_) {
+      if (localDecl.mutator && localDecl.mutator.rootBlock) {
         // Iterate through mutatorarg param blocks and change name of one at
         // paramIndex
-        const mutatorContainer = localDecl.mutator.rootBlock_;
+        const mutatorContainer = localDecl.mutator.rootBlock;
         let mutatorargIndex = 0;
         let mutatorarg = mutatorContainer.getInputTargetBlock('STACK');
         while (mutatorarg && mutatorargIndex < paramIndex) {
@@ -421,17 +519,7 @@ Blockly.Blocks['local_declaration_statement'] = {
     // Reconstruct inputs only if local list has changed
     if (!LexicalVariable.stringListsEqual(this.localNames_,
         newLocalNames)) {
-      // Switch off rendering while the block is rebuilt.
-      // var savedRendered = this.rendered;
-      // this.rendered = false;
-
       this.updateDeclarationInputs_(newLocalNames, initializers);
-
-      // Restore rendering and show the changes.
-      // this.rendered = savedRendered;
-      // if (this.rendered) {
-      //  this.render();
-      // }
     }
   },
   saveConnections: function(containerBlock) {
@@ -497,7 +585,7 @@ Blockly.Blocks['local_declaration_statement'] = {
       this.updateDeclarationInputs_(renamedLocalNames, initializerConnections);
       // Update the mutator's variables if the mutator is open.
       if (this.mutator && this.mutator.isVisible()) {
-        const blocks = this.mutator.workspace_.getAllBlocks();
+        const blocks = this.mutator.getWorkspace().getAllBlocks();
         for (let x = 0, block; block = blocks[x]; x++) {
           if (block.type == 'procedures_mutatorarg') {
             const oldName = block.getFieldValue('NAME');

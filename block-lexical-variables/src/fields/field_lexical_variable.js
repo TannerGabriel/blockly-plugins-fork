@@ -355,26 +355,10 @@ FieldLexicalVariable.prototype.doValueUpdate_ = function(newValue) {
 
   this.value_ = newValue;
 
-  // Try to fetch the parameter type from the flydown
-  let extraOption;
-  try {
-    const topWs = this.sourceBlock_ && this.sourceBlock_.workspace && this.sourceBlock_.workspace.getTopWorkspace
-      ? this.sourceBlock_.workspace.getTopWorkspace()
-      : null;
-    const flydown = topWs && typeof topWs.getFlydown === 'function' ? topWs.getFlydown() : null;
-    const openerField = flydown && flydown.field_ ? flydown.field_ : null;
-    const vartype = openerField && typeof openerField.getVariableType === 'function'
-      ? openerField.getVariableType()
-      : undefined;
-
-    if (vartype) {
-      extraOption = [[genLocalizedValue(newValue), newValue, vartype]];
-    }
-  } catch (e) {
-    // Fall back silently if flydown not available.
-  }
-
-  const options = this.getOptions(false, extraOption || [[genLocalizedValue(newValue), newValue]]);
+  // Always resolve type via getNamesInScope so the scope chain is the authority.
+  // The fallback tuple uses an empty type string; it will be replaced if the
+  // variable is found in scope (which is the normal case).
+  const options = this.getOptions(false, [[genLocalizedValue(newValue), newValue, '']]);
   for (let i = 0, option; (option = options[i]); i++) {
     if (option[1] == this.value_) {
       this.selectedOption = option;
@@ -632,13 +616,16 @@ LexicalVariable.renameGlobal = function(newName) {
   // [lyn, 10/27/13] now check legality of identifiers
   newName = LexicalVariable.makeLegalIdentifier(newName);
 
+  // Only propagate the rename to getters/setters when the user actually typed a new name
+  const nameActuallyChanged = (newName !== oldName);
+
   this.sourceBlock_.getField('NAME').doValueUpdate_(newName);
 
   const globals = FieldLexicalVariable.getGlobalNames(this.sourceBlock_);
   // this.sourceBlock excludes block being renamed from consideration
   // Potentially rename declaration against other occurrences
   newName = FieldLexicalVariable.nameNotIn(newName, globals.map((element) => element[0]));
-  if (this.sourceBlock_.rendered) {
+  if (nameActuallyChanged && this.sourceBlock_.rendered) {
     // Rename getters and setters
     if (Blockly.common.getMainWorkspace()) {
       const blocks = Blockly.common.getMainWorkspace().getAllBlocks();
@@ -1140,6 +1127,7 @@ LexicalVariable.getNextTargetBlock = function(block) {
  *     order; false otherwise.
  */
 LexicalVariable.stringListsEqual = function(strings1, strings2) {
+  if (!strings1 || !strings2) return strings1 === strings2;
   const len1 = strings1.length;
   const len2 = strings2.length;
   if (len1 !== len2) {

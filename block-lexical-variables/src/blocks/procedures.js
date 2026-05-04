@@ -598,12 +598,20 @@ Blockly.Blocks['procedures_defreturn'] = {
       retTypeField.setValidator((newType) => {
         const inp = this.getInput('RETURN');
         if (inp) inp.setCheck(newType ? [newType] : null);
+        const procName = this.getFieldValue('NAME');
+        this.workspace.getAllBlocks(false).forEach((block) => {
+          if (block.type === 'procedures_callreturn' &&
+              block.getFieldValue('PROCNAME') === procName) {
+            block.setOutput(true, newType ? [newType] : null);
+          }
+        });
         return newType;
       });
     }
     this.setMutator(new Blockly.icons.MutatorIcon(['procedures_mutatorarg'], this));
     this.setTooltip(Blockly.Msg['LANG_PROCEDURES_DEFRETURN_TOOLTIP']);
     this.arguments_ = [];
+    this.argumentTypes_ = [];
     this.warnings = [{name: 'checkEmptySockets', sockets: ['RETURN']}];
   },
   createHeader: function(procName) {
@@ -1098,6 +1106,7 @@ Blockly.Blocks['procedures_callreturn'] = {
     this.setOutput(true, null);
     this.setTooltip(Blockly.Msg['LANG_PROCEDURES_CALLRETURN_TOOLTIP']);
     this.arguments_ = [];
+    this.argumentTypes_ = [];
     this.quarkConnections_ = null;
     this.quarkArguments_ = null;
     this.errors = [
@@ -1109,11 +1118,21 @@ Blockly.Blocks['procedures_callreturn'] = {
     ];
     this.setOnChange(function(changeEvent) {
       this.workspace.getWarningHandler().checkErrors(this);
+      if (dataTypesEnabled()) {
+        const returnType = this.getReturnType();
+        this.setOutput(true, returnType ? [returnType] : null);
+      }
     });
     // Blockly.FieldProcedure.onChange.call(this.getField("PROCNAME"),
     //     this.procNamesFxn()[0][0]);
     ProcedureUtils.onChange.call(this.getField('PROCNAME'),
         this.getField('PROCNAME').getValue());
+  },
+  getReturnType: function() {
+    if (!dataTypesEnabled()) return null;
+    const defBlock = Blockly.Procedures.getDefinition(
+        this.getFieldValue('PROCNAME'), this.workspace);
+    return (defBlock && defBlock.getReturnType) ? defBlock.getReturnType() : null;
   },
   getProcedureCall: Blockly.Blocks.procedures_callnoreturn.getProcedureCall,
   renameProcedure: Blockly.Blocks.procedures_callnoreturn.renameProcedure,

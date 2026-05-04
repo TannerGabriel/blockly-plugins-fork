@@ -105,7 +105,7 @@ import * as Shared from '../shared.js';
 import {NameSet} from "../nameSet.js";
 import {Substitution} from '../substitution.js'
 import {lexicalVariableScopeMixin} from "../mixins.js";
-import {dataTypesEnabled} from "../shared.js";
+import {dataTypesEnabled, VariableTypeRegistry} from "../shared.js";
 
 delete Blockly.Blocks['global_declaration'];
 /**
@@ -137,7 +137,8 @@ Blockly.Blocks['global_declaration'] = {
         this.getInput('VALUE').setCheck(type ? [type] : null);
 
         if (e.type === 'change' && e.name === 'TYPE') {
-          LexicalVariable.changeGlobalVariableType(this.getFieldValue('NAME'), type, type)
+          VariableTypeRegistry.setType(this.workspace, 'global ' + this.getFieldValue('NAME'), type);
+          LexicalVariable.changeGlobalVariableType(this.getFieldValue('NAME'), type, type);
         }
       })
     }
@@ -154,8 +155,15 @@ Blockly.Blocks['global_declaration'] = {
   },
   renameVar: function(oldName, newName) {
     if (Blockly.Names.equals(oldName, this.getFieldValue('NAME'))) {
+      VariableTypeRegistry.remove(this.workspace, 'global ' + this.getFieldValue('NAME'));
       this.setFieldValue(newName, 'NAME');
     }
+  },
+  dispose: function(...args) {
+    if (dataTypesEnabled() && this.workspace) {
+      VariableTypeRegistry.remove(this.workspace, 'global ' + this.getFieldValue('NAME'));
+    }
+    Blockly.BlockSvg.prototype.dispose.call(this, ...args);
   },
 };
 
@@ -190,7 +198,8 @@ Blockly.Blocks['global_declaration_array'] = {
         this.getInput('VALUE').setCheck(type ? [type] : null);
 
         if (e.type === 'change' && e.name === 'TYPE') {
-          LexicalVariable.changeGlobalVariableType(this.getFieldValue('NAME'), type, type)
+          VariableTypeRegistry.setType(this.workspace, 'global ' + this.getFieldValue('NAME'), type);
+          LexicalVariable.changeGlobalVariableType(this.getFieldValue('NAME'), type, type);
         }
       })
     }
@@ -207,8 +216,15 @@ Blockly.Blocks['global_declaration_array'] = {
   },
   renameVar: function(oldName, newName) {
     if (Blockly.Names.equals(oldName, this.getFieldValue('NAME'))) {
+      VariableTypeRegistry.remove(this.workspace, 'global ' + this.getFieldValue('NAME'));
       this.setFieldValue(newName, 'NAME');
     }
+  },
+  dispose: function(...args) {
+    if (dataTypesEnabled() && this.workspace) {
+      VariableTypeRegistry.remove(this.workspace, 'global ' + this.getFieldValue('NAME'));
+    }
+    Blockly.BlockSvg.prototype.dispose.call(this, ...args);
   },
 };
 
@@ -456,7 +472,7 @@ Blockly.Blocks['local_declaration_statement'] = {
   parameterFlydown: function(paramIndex) {
     const initialParamName = this.localNames_[paramIndex];
     let initialParamType = '';
-    if (initialParamType.length > paramIndex) {
+    if (this.localTypes_ && this.localTypes_.length > paramIndex) {
       initialParamType = this.localTypes_[paramIndex];
     }
     const localDecl = this; // Here, "this" is the local decl block. Name it to
@@ -698,7 +714,7 @@ Blockly.Blocks['local_declaration_statement'] = {
   },
   getVariableTypes: function() {
     // When the mutator is open, reflect the state inside it (live types).
-    if (this.mutator && this.mutator.getSize() && this.mutator.rootBlock) {
+    if (this.mutator && this.mutator.isVisible() && this.mutator.rootBlock) {
       const types = [];
       let arg = this.mutator.rootBlock.getInputTargetBlock('STACK');
       while (arg) {

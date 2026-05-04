@@ -119,3 +119,40 @@ export const possiblyPrefixGeneratedVarName = function(prefix) {
 export const dataTypesEnabled = function () {
   return Blockly.types_ && Blockly.types_.enableDataTypes;
 }
+
+/**
+ * Registry mapping variable code-names to their declared types, keyed by
+ * workspace.
+ *
+ * Keys for global variables use the full code-name including the "global "
+ * prefix (e.g. "global myVar") to match the value stored in VAR fields.
+ * Local variables are scope-sensitive and should be looked up via
+ * getNamesInScope instead.
+ */
+export const VariableTypeRegistry = {
+  _map: new WeakMap(),
+
+  _ws(workspace) {
+    return (workspace && workspace.getRootWorkspace && workspace.getRootWorkspace()) || workspace;
+  },
+
+  setType(workspace, codeName, type) {
+    const ws = this._ws(workspace);
+    if (!ws) return;
+    if (!this._map.has(ws)) this._map.set(ws, new Map());
+    this._map.get(ws).set(codeName, type || '');
+  },
+
+  getType(workspace, codeName) {
+    const ws = this._ws(workspace);
+    if (!ws || !this._map.has(ws)) return null;
+    const t = this._map.get(ws).get(codeName);
+    return t !== undefined ? t : null;
+  },
+
+  remove(workspace, codeName) {
+    const ws = this._ws(workspace);
+    if (!ws || !this._map.has(ws)) return;
+    this._map.get(ws).delete(codeName);
+  },
+};

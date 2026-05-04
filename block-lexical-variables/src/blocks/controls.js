@@ -42,6 +42,8 @@ import {FieldParameterFlydown} from '../fields/field_parameter_flydown.js';
 import {FieldFlydown} from '../fields/field_flydown.js';
 import * as Utilities from '../utilities.js';
 import {lexicalVariableScopeMixin} from '../mixins.js';
+import {dataTypesEnabled} from '../shared.js';
+import {LexicalVariable} from '../fields/field_lexical_variable.js';
 
 Blockly.Blocks['controls_forRange'] = {
   // For range.
@@ -55,23 +57,24 @@ Blockly.Blocks['controls_forRange'] = {
     // Need to deal with variables here
     // [lyn, 11/30/12] Changed variable to be text input box that does renaming
     // right (i.e., avoids variable capture)
+    const numCheck = dataTypesEnabled()
+        ? [Blockly.types_.loopType]
+        : Utilities.yailTypeToBlocklyType('number', Utilities.INPUT);
+    const varType = dataTypesEnabled() ? Blockly.types_.loopType : undefined;
     this.appendValueInput('FROM')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(numCheck)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_ITEM)
         .appendField(new FieldParameterFlydown(
             Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_VAR, true,
-            FieldFlydown.DISPLAY_BELOW, undefined, Blockly?.types_?.loopType), 'VAR')
+            FieldFlydown.DISPLAY_BELOW, undefined, varType), 'VAR')
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_START)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendValueInput('TO')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(numCheck)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_END)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendValueInput('BY')
-        .setCheck(Utilities.yailTypeToBlocklyType('number',
-            Utilities.INPUT))
+        .setCheck(numCheck)
         .appendField(Blockly.Msg.LANG_CONTROLS_FORRANGE_INPUT_STEP)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendStatementInput('DO')
@@ -89,7 +92,7 @@ Blockly.Blocks['controls_forRange'] = {
     return 'DO';
   },
   getVariableType: function () {
-    return Blockly?.types_?.loopType
+    return dataTypesEnabled() ? (Blockly?.types_?.loopType || null) : null;
   }
 };
 
@@ -111,13 +114,26 @@ Blockly.Blocks['controls_forEach'] = {
     // [lyn, 10/07/13] Changed default name from "i" to "item"
     // [lyn, 11/29/12] Changed variable to be text input box that does renaming
     // right (i.e., avoids variable capture)
+
+    let listCheck;
+    if (dataTypesEnabled()) {
+      listCheck = [];
+      Blockly.types_.dataTypes.forEach(function(pair) {
+        const base = pair[1];
+        listCheck.push(base + '[]');
+        listCheck.push(base + '[][]');
+        listCheck.push(base + '[][][]');
+      });
+    } else {
+      listCheck = Utilities.yailTypeToBlocklyType('list', Utilities.INPUT);
+    }
+
     this.appendValueInput('LIST')
-        .setCheck(Utilities.yailTypeToBlocklyType('list',
-            Utilities.INPUT))
+        .setCheck(listCheck)
         .appendField(Blockly.Msg.LANG_CONTROLS_FOREACH_INPUT_ITEM)
         .appendField(new FieldParameterFlydown(
             Blockly.Msg.LANG_CONTROLS_FOREACH_INPUT_VAR,
-            true, FieldFlydown.DISPLAY_BELOW, undefined, Blockly?.types_?.loopType), 'VAR')
+            true, FieldFlydown.DISPLAY_BELOW, undefined, undefined), 'VAR')
         .appendField(Blockly.Msg.LANG_CONTROLS_FOREACH_INPUT_INLIST)
         .setAlign(Blockly.inputs.Align.RIGHT);
     this.appendStatementInput('DO')
@@ -126,6 +142,15 @@ Blockly.Blocks['controls_forEach'] = {
     this.setNextStatement(true);
     this.setTooltip(Blockly.Msg.LANG_CONTROLS_FOREACH_TOOLTIP);
     this.mixin(lexicalVariableScopeMixin);
+
+    if (dataTypesEnabled()) {
+      this.setOnChange(function(e) {
+        if (!this.workspace || this.workspace.isFlyout || this.isInFlyout) return;
+        const elementType = this.getVariableType();
+        LexicalVariable.changeVariableType(
+            this, this.getFieldValue('VAR'), null, elementType);
+      });
+    }
   },
   getDeclaredVarFieldNames: function () {
     return ['VAR'];
@@ -134,7 +159,14 @@ Blockly.Blocks['controls_forEach'] = {
     return 'DO';
   },
   getVariableType: function () {
-    return Blockly?.types_?.loopType
+    if (!dataTypesEnabled()) return null;
+    const listInput = this.getInput('LIST');
+    const listBlock = listInput && listInput.connection &&
+                      listInput.connection.targetBlock();
+    const outCheck = listBlock && listBlock.outputConnection &&
+                     listBlock.outputConnection.getCheck();
+    const listType = outCheck && outCheck[0];
+    return (listType && listType.endsWith('[]')) ? listType.slice(0, -2) : null;
   }
 };
 

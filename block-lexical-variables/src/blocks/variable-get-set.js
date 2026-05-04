@@ -42,6 +42,13 @@ Blockly.Blocks['lexical_variable_get'] = {
         this.setOnChange(function(changeEvent) {
             this.workspace.getWarningHandler().checkErrors(this);
             if (dataTypesEnabled()) {
+              const field = this.fieldVar_;
+              const currentValue = field.getValue();
+              const freshOptions = field.getOptions(false);
+              const match = freshOptions.find(function(opt) {
+                return opt[1] === currentValue;
+              });
+              if (match) field.selectedOption = match;
               const type = this.getVariableType();
               this.setOutput(true, type ? [type] : null);
             }
@@ -145,11 +152,16 @@ Blockly.Blocks['lexical_variable_get'] = {
     getVariableType: function() {
         return this.fieldVar_.getVariableType();
     },
-    changeVariableType: function() {
-      this.fieldVar_.getOptions(false);
-      this.fieldVar_.setValue(this.getFieldValue('VAR')); // Reselect to update the selected option
-      this.fieldVar_.forceRerender();
-    }
+    changeVariableType: function(newType) {
+      if (this.fieldVar_.selectedOption) {
+        this.fieldVar_.selectedOption = [
+          this.fieldVar_.selectedOption[0],
+          this.fieldVar_.selectedOption[1],
+          newType || '',
+        ];
+      }
+      this.setOutput(true, newType ? [newType] : null);
+    },
 };
 
 /**
@@ -185,6 +197,13 @@ Blockly.Blocks['lexical_variable_set'] = {
         this.setOnChange(function(changeEvent) {
             this.workspace.getWarningHandler().checkErrors(this);
             if (dataTypesEnabled()) {
+              const field = this.fieldVar_;
+              const currentValue = field.getValue();
+              const freshOptions = field.getOptions(false);
+              const match = freshOptions.find(function(opt) {
+                return opt[1] === currentValue;
+              });
+              if (match) field.selectedOption = match;
               const type = this.getVariableType();
               this.getInput('VALUE').setCheck(type ? [type] : null);
             }
@@ -231,5 +250,15 @@ Blockly.Blocks['lexical_variable_set'] = {
     getVariableType: function() {
         return this.fieldVar_.getVariableType();
     },
-  changeVariableType: Blockly.Blocks.lexical_variable_get.changeVariableType,
+    changeVariableType: function(newType) {
+      if (this.fieldVar_.selectedOption) {
+        this.fieldVar_.selectedOption = [
+          this.fieldVar_.selectedOption[0],
+          this.fieldVar_.selectedOption[1],
+          newType || '',
+        ];
+      }
+      const inp = this.getInput('VALUE');
+      if (inp) inp.setCheck(newType ? [newType] : null);
+    },
 };

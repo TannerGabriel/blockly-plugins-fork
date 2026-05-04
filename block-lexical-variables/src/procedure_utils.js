@@ -18,6 +18,7 @@ import {
   FieldLexicalVariable,
   LexicalVariable,
 } from './fields/field_lexical_variable.js';
+import {dataTypesEnabled} from './shared.js';
 
 const procDefaultValue = ['', ''];
 
@@ -57,6 +58,11 @@ export const onChange = function(procedureId) {
     this.block.setProcedureParameters(procDefBlock.arguments_, procDefBlock.paramIds_, true);
   } else {
     this.block.render();
+  }
+
+  if (dataTypesEnabled() && this.block.type === 'procedures_callreturn') {
+    const returnType = procDefBlock.getReturnType ? procDefBlock.getReturnType() : null;
+    this.block.setOutput(true, returnType ? [returnType] : null);
   }
 };
 

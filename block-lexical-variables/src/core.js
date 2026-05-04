@@ -20,6 +20,7 @@ import {FieldProcedureName} from './fields/field_procedurename.js';
 import {FieldNoCheckDropdown} from './fields/field_nocheck_dropdown.js';
 import {NameSet} from './nameSet.js';
 import * as Shared from './shared.js';
+import {dataTypesEnabled, VariableTypeRegistry} from './shared.js';
 import {Substitution} from './substitution.js';
 import './procedure_database.js';
 import * as Blockly from 'blockly/core';
@@ -57,6 +58,54 @@ export class LexicalVariablesPlugin {
             workspace.svgBubbleCanvas_);
         flydown.init(workspace);
         flydown.autoClose = true; // Flydown closes after selecting a block
+
+        if (dataTypesEnabled()) {
+          workspace.addChangeListener(function(e) {
+            if (e.type !== 'finished_loading') return;
+
+            workspace.getAllBlocks(false).forEach(function(block) {
+              if ((block.type === 'global_declaration' ||
+                   block.type === 'global_declaration_array') &&
+                  block.getVariableType) {
+                const name = block.getFieldValue('NAME');
+                const type = block.getVariableType();
+                if (name) {
+                  VariableTypeRegistry.setType(workspace, 'global ' + name, type);
+                }
+              }
+            });
+
+            workspace.getAllBlocks(false).forEach(function(block) {
+              if (block.type === 'lexical_variable_get' ||
+                  block.type === 'lexical_variable_set') {
+                const field = block.fieldVar_;
+                if (!field) return;
+
+                const currentValue = field.getValue();
+                const freshOptions = field.getOptions(false);
+                const match = freshOptions.find(function(opt) {
+                  return opt[1] === currentValue;
+                });
+                if (match) field.selectedOption = match;
+
+                const type = block.getVariableType();
+                if (block.type === 'lexical_variable_get') {
+                  block.setOutput(true, type ? [type] : null);
+                } else {
+                  const inp = block.getInput('VALUE');
+                  if (inp) inp.setCheck(type ? [type] : null);
+                }
+              } else if (block.type === 'procedures_callreturn') {
+                const defBlock = Blockly.Procedures.getDefinition(
+                    block.getFieldValue('PROCNAME'), workspace);
+                if (defBlock && defBlock.getReturnType) {
+                  const returnType = defBlock.getReturnType();
+                  block.setOutput(true, returnType ? [returnType] : null);
+                }
+              }
+            });
+          });
+        }
     }
 
     static Flydown = Flydown;

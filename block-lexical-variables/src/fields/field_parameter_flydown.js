@@ -101,14 +101,18 @@ FieldParameterFlydown.prototype.flydownBlocksXML_ = function() {
 
   // Name in this parameter field.
   const name = this.getText();
+  const type = this.getVariableType && this.getVariableType();
+  const mutation = type ? '<mutation type="' + type + '"></mutation>' : '';
   const getterSetterXML =
       '<xml>' +
       '<block type="lexical_variable_get">' +
+      mutation +
       '<field name="VAR">' +
       name +
       '</field>' +
       '</block>' +
       '<block type="lexical_variable_set">' +
+      mutation +
       '<field name="VAR">' +
       name +
       '</field>' +

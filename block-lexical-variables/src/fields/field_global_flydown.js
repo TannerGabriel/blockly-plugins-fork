@@ -48,17 +48,23 @@ FieldGlobalFlydown.prototype.flyoutCSSClassName =
 FieldGlobalFlydown.prototype.flydownBlocksXML_ = function() {
   // global name for this parameter field.
   const name = Blockly.Msg.LANG_VARIABLES_GLOBAL_PREFIX + ' ' + this.getText();
+  const sourceBlock = this.getSourceBlock && this.getSourceBlock();
+  const type = sourceBlock && sourceBlock.getVariableType ?
+      sourceBlock.getVariableType() : '';
+  const mutation = type ? '<mutation type="' + type + '"></mutation>' : '';
   const getterSetterXML =
       '<xml>' +
         '<block type="lexical_variable_get">' +
-          '<title name="VAR">' +
+          mutation +
+          '<field name="VAR">' +
             name +
-          '</title>' +
+          '</field>' +
         '</block>' +
         '<block type="lexical_variable_set">' +
-          '<title name="VAR">' +
+          mutation +
+          '<field name="VAR">' +
             name +
-          '</title>' +
+          '</field>' +
         '</block>' +
       '</xml>';
   return getterSetterXML;

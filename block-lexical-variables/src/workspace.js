@@ -48,6 +48,43 @@ Blockly.Workspace.prototype.getWarningHandler = Blockly.Workspace.prototype.getW
   return this.warningHandler_;
 };
 
+function dataTypesEnabled() {
+  return Blockly.types_ && Blockly.types_.enableDataTypes;
+}
+
+function refreshLexicalVariableTypeChecks(workspace) {
+  if (!dataTypesEnabled() || !workspace) {
+    return;
+  }
+
+  workspace.getAllBlocks(false).forEach(function(block) {
+    const field = block.fieldVar_;
+    if (!field || !field.getOptions || !field.getValue ||
+        !block.changeVariableType) {
+      return;
+    }
+
+    const value = field.getValue();
+    const option = field.getOptions(false).find(function(option) {
+      return option[1] === value;
+    });
+    if (option) {
+      field.selectedOption = option;
+      block.changeVariableType(option[2] || '');
+    }
+  });
+}
+
+if (!Blockly.Xml.domToWorkspace.typedLexicalVariablesPatched_) {
+  const domToWorkspace = Blockly.Xml.domToWorkspace;
+  Blockly.Xml.domToWorkspace = function(xml, workspace) {
+    const result = domToWorkspace.call(this, xml, workspace);
+    refreshLexicalVariableTypeChecks(workspace);
+    return result;
+  };
+  Blockly.Xml.domToWorkspace.typedLexicalVariablesPatched_ = true;
+}
+
 /**
  * Shared flydown for parameters and variables.
  * @type {Flydown}

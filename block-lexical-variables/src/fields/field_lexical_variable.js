@@ -165,9 +165,13 @@ FieldLexicalVariable.getGlobalNames = function(optExcludedBlock) {
       if ((block.getGlobalNames) &&
           (block != optExcludedBlock)) {
         const names = block.getGlobalNames();
-        const type = block.getVariableType();
+        const type = block.getVariableType && block.getVariableType();
         names.forEach(name => {
-          globals.push([name, name, type])
+          if (Shared.dataTypesEnabled()) {
+            globals.push([name, name, type]);
+          } else {
+            globals.push(name);
+          }
         })
       }
     }
@@ -211,7 +215,14 @@ FieldLexicalVariable.getNamesInScope = function(block) {
   // [lyn, 11/24/12] Sort and remove duplicates from namespaces
   globalNames = LexicalVariable.sortAndRemoveDuplicates(globalNames);
   globalNames = globalNames.map(function(name) {
-    return [Shared.prefixGlobalMenuName(name[0]), 'global ' + name[1], name[2]];
+    if (Shared.dataTypesEnabled()) {
+      return [
+        Shared.prefixGlobalMenuName(name[0]),
+        'global ' + name[1],
+        name[2],
+      ];
+    }
+    return [Shared.prefixGlobalMenuName(name), 'global ' + name];
   });
   const allLexicalNames = FieldLexicalVariable.getLexicalNamesInScope(
       block);
@@ -263,7 +274,11 @@ FieldLexicalVariable.getLexicalNamesInScope = function(block) {
       // note: correctly handles case where some prefixes are the same
       fullName = (Shared.possiblyPrefixMenuNameWith(prefix))(name);
     }
-    list.push([fullName, codeName, type]);
+    if (Shared.dataTypesEnabled()) {
+      list.push([fullName, codeName, type]);
+    } else {
+      list.push([fullName, codeName]);
+    }
   }
 
   child = block;
@@ -296,9 +311,16 @@ FieldLexicalVariable.dropdownCreate = function() {
   if (variableList.length > 0) {
     return variableList;
   } else if (this.translatedName) {
-    return [[this.translatedName, this.varname, this.getVariableType?.() || '']];
+    if (Shared.dataTypesEnabled()) {
+      return [[
+        this.translatedName,
+        this.varname,
+        this.getVariableType?.() || '',
+      ]];
+    }
+    return [[this.translatedName, this.varname]];
   } else {
-    return [[' ', ' ', '']];
+    return Shared.dataTypesEnabled() ? [[' ', ' ', '']] : [[' ', ' ']];
   }
 };
 
@@ -358,12 +380,22 @@ FieldLexicalVariable.prototype.doValueUpdate_ = function(newValue) {
   // Always resolve type via getNamesInScope so the scope chain is the authority.
   // The fallback tuple uses an empty type string; it will be replaced if the
   // variable is found in scope (which is the normal case).
-  const options = this.getOptions(false, [[genLocalizedValue(newValue), newValue, '']]);
+  const fallbackType = this.sourceBlock_ &&
+      this.sourceBlock_.getFallbackVariableType &&
+      this.sourceBlock_.getFallbackVariableType();
+  const fallbackOption = Shared.dataTypesEnabled() ?
+      [genLocalizedValue(newValue), newValue, fallbackType || ''] :
+      [newValue, newValue];
+  const options = this.getOptions(false, [fallbackOption]);
   for (let i = 0, option; (option = options[i]); i++) {
     if (option[1] == this.value_) {
       this.selectedOption = option;
       break;
     }
+  }
+  if (Shared.dataTypesEnabled() && this.sourceBlock_ &&
+      this.sourceBlock_.changeVariableType) {
+    this.sourceBlock_.changeVariableType(this.getVariableType() || '');
   }
   this.updateMutation();
   this.forceRerender();
@@ -596,7 +628,7 @@ FieldLexicalVariable.fromJson = function(options) {
 };
 
 FieldLexicalVariable.prototype.getVariableType = function () {
-    return this.selectedOption[2];
+    return this.selectedOption && this.selectedOption[2];
 }
 
 Blockly.fieldRegistry.register('field_lexical_variable',
@@ -624,7 +656,9 @@ LexicalVariable.renameGlobal = function(newName) {
   const globals = FieldLexicalVariable.getGlobalNames(this.sourceBlock_);
   // this.sourceBlock excludes block being renamed from consideration
   // Potentially rename declaration against other occurrences
-  newName = FieldLexicalVariable.nameNotIn(newName, globals.map((element) => element[0]));
+  newName = FieldLexicalVariable.nameNotIn(newName, globals.map((element) => {
+    return Array.isArray(element) ? element[0] : element;
+  }));
   if (nameActuallyChanged && this.sourceBlock_.rendered) {
     // Rename getters and setters
     if (Blockly.common.getMainWorkspace()) {

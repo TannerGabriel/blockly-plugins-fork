@@ -152,7 +152,15 @@ Blockly.Blocks['lexical_variable_get'] = {
     getVariableType: function() {
         return this.fieldVar_.getVariableType();
     },
+    getFallbackVariableType: function() {
+        return this.fallbackVariableType_;
+    },
+    domToMutation: function(xmlElement) {
+        this.fallbackVariableType_ = xmlElement.getAttribute('type') || '';
+        this.changeVariableType(this.fallbackVariableType_);
+    },
     changeVariableType: function(newType) {
+      this.fallbackVariableType_ = newType || '';
       if (this.fieldVar_.selectedOption) {
         this.fieldVar_.selectedOption = [
           this.fieldVar_.selectedOption[0],
@@ -250,7 +258,11 @@ Blockly.Blocks['lexical_variable_set'] = {
     getVariableType: function() {
         return this.fieldVar_.getVariableType();
     },
+    getFallbackVariableType: Blockly.Blocks.lexical_variable_get
+        .getFallbackVariableType,
+    domToMutation: Blockly.Blocks.lexical_variable_get.domToMutation,
     changeVariableType: function(newType) {
+      this.fallbackVariableType_ = newType || '';
       if (this.fieldVar_.selectedOption) {
         this.fieldVar_.selectedOption = [
           this.fieldVar_.selectedOption[0],

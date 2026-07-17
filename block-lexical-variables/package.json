@@ -28,13 +28,13 @@
     "local-variables",
     "static-types"
   ],
-  "homepage": "https://github.com/mit-cml/blockly-plugins/tree/main/block-lexical-variables#readme",
+  "homepage": "https://github.com/TannerGabriel/blockly-plugins-fork/tree/feat/static-types-nuxt/block-lexical-variables#readme",
   "bugs": {
-    "url": "https://github.com/mit-mcl/blockly-plugins/issues"
+    "url": "https://github.com/TannerGabriel/blockly-plugins-fork/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mit-cml/blockly-plugins.git",
+    "url": "git+https://github.com/TannerGabriel/blockly-plugins-fork.git",
     "directory": "block-lexical-variables"
   },
   "license": "Apache-2.0",
